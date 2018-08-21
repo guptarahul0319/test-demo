@@ -1,0 +1,346 @@
+package com.tricon.DATASETTING.serviceImpl;
+
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
+import java.io.Reader;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.commons.net.ftp.FTPClient;
+import org.apache.commons.net.ftp.FTPFile;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.opencsv.CSVReader;
+import com.opencsv.ICSVParser;
+import com.tricon.DATASETTING.Enum.AppraisalCycleStatusEnum;
+import com.tricon.DATASETTING.daoImpl.DataSettingManagementDao;
+import com.tricon.DATASETTING.util.Constants;
+import com.tricon.DATASETTING.util.Encryption;
+import com.tricon.DATASETTING.util.Time;
+
+@Component
+public class DataSettingManagementService {
+
+	@Autowired
+	DataSettingManagementDao dataSource;
+
+	@Autowired
+	Encryption encryption;
+
+	@Autowired
+	Time time;
+
+	@Value("${FtpServer}")
+	private String server;
+
+	@Value("${FtpServerPort}")
+	private int port;
+
+	@Value("${FtpUsername}")
+	private String username;
+
+	@Value("${FtpPassword}")
+	private String password;
+	
+	@Value("${FtpWorkingDirectory}")
+	private String FtpWorkingDirectory;
+
+	@Value("${employeeListFile}")
+	public String employeeListFile;
+
+	@Value("${designationDetailsFile}")
+	public String designationDetailsFile;
+
+	@Value("${numberOfEmployeesDetailsFetchedAtaTime}")
+	public int numberOfEmployeesDetailsFetchedAtaTime;
+
+	@Value("${employmentTypeDetailsFile}")
+	public String employmentTypeDetailsFile;
+
+	@Value("${projectDetailsFile}")
+	public String projectDetailsFile;
+
+	@Autowired
+	FtpFile ftpFile;
+
+	private static final Logger log = LoggerFactory
+			.getLogger(DataSettingManagementService.class);
+
+	public void setEmployeeDetailsIntoAppraisal() throws Exception {
+		log.info("Before fetching all CSV files");
+
+		FTPClient ftpClient = new FTPClient();
+
+		// TO DO get from properties
+		ftpClient.connect(server);
+		ftpClient.login(username, password);
+		// lists files and directories in the current working directory
+		FTPFile[] files = ftpClient.listFiles(FtpWorkingDirectory);
+		log.info("No. of files present in Ftp location are :"+files.length);
+		for (FTPFile file : files) {
+			String fileName = file.getName();
+			log.info("FILENAME IS: "+fileName);
+			if (!file.isDirectory()	&& (fileName.contains(designationDetailsFile)
+					||fileName.contains(employeeListFile)
+					||fileName.contains(projectDetailsFile)
+					||fileName.contains(employmentTypeDetailsFile))) {
+
+				String remoteFilePath = FtpWorkingDirectory + fileName;
+				File localfile = new File("./" + fileName);
+				OutputStream outputStream = new BufferedOutputStream(
+						new FileOutputStream(localfile));
+				boolean success = ftpClient.retrieveFile(remoteFilePath,
+						outputStream);
+				outputStream.close();
+				/*if (success) {
+					log.info("Ftp file successfully download. Filename: "+fileName);
+					if(ftpClient.deleteFile(fileName)){
+						log.info("Deleted file from ftp location is: "+fileName);
+					}
+				}*/
+			}
+		}
+		ftpClient.logout();
+		ftpClient.disconnect();
+		parseFilesAndSetIntoAppraisalDB();
+	}
+
+	public void parseFilesAndSetIntoAppraisalDB() throws Exception {
+
+		File file = new File("./");
+		File[] files = file.listFiles();
+		for (File f : files) {
+			if (!f.isDirectory()) {
+				if (f.getName().contains(employeeListFile)) {
+					insertIntoAppraisalDatabase("./" + f.getName());
+					 if(f.delete()){
+					 log.info("local file deleted:"+f.getName()); };
+				} else if (f.getName().contains(designationDetailsFile)) {
+					setDesignationDetailsFromAppraisal("./" + f.getName());
+				if(f.delete()){
+					 log.info("local file deleted:"+f.getName()); };
+				} else if (f.getName().contains(projectDetailsFile)) {
+					InsertProjectsIntoAppraisalProjectTable("./" + f.getName());
+				if(f.delete()){
+					 log.info("local file deleted:"+f.getName()); };
+					 
+				} else if (f.getName().contains(employmentTypeDetailsFile)) {
+				if(f.delete()){
+					 log.info("local file deleted:"+f.getName()); };
+					 
+				}
+			}
+
+		}
+	}
+
+	@Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
+	public void InsertProjectsIntoAppraisalProjectTable(String filePath)
+			throws Exception {
+		log.info("Updating Master Table of Appraisal");
+		try (Reader reader = Files.newBufferedReader(Paths.get(filePath));
+				CSVReader csvReader = new CSVReader(reader,';','\u0000','"');) {
+			List<String[]> records = csvReader.readAll();
+			for (String[] record : records) {
+				dataSource.insertIntoAppraisalProjectMasterTable(
+						Integer.valueOf(record[0]), record[1]);
+			}
+			log.info("All PROJECTS SETTING DONE");
+		}
+	}
+
+	@Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
+	public void insertIntoAppraisalDatabase(String filePath) throws Exception {
+		try (Reader reader = Files.newBufferedReader(Paths.get(filePath));
+				CSVReader csvReader = new CSVReader(reader,';','\u0000','"');) {
+			List<String[]> ListOfEmployeeDetails = csvReader.readAll();
+			for (String[] employeeDetails : ListOfEmployeeDetails) {
+				insertNewEmployeesDetails(employeeDetails);
+			}
+			for (String[] recordOfEmployeedetails : ListOfEmployeeDetails) {
+				setDesignationForEmployee(recordOfEmployeedetails);
+				String mgrIdAp;
+				String empId = recordOfEmployeedetails[0];
+				String mgrIdPw = recordOfEmployeedetails[2];
+				try {
+					mgrIdAp = dataSource.fetchManagerId(empId);
+
+					// TO DO util method for check same fields
+					if ((mgrIdAp == null && mgrIdPw.equals("null"))
+							|| (mgrIdAp != null && mgrIdAp.equals(mgrIdPw))
+							|| (mgrIdPw != null && mgrIdPw.equals(mgrIdAp))) {
+						log.info("NO UPDATION FOR THIS EMPLOYEE " + empId);
+					} else {
+						log.info("UPDATION STARTED FOR THIS EMPLOYEE " + empId);
+						if (mgrIdAp == null) {
+							dataSource
+									.updateHistoryOfManagerIdWithNoManager(empId);
+						} else {
+							dataSource.updateHistoryOfManagerId(empId, mgrIdAp);
+						}
+						if (mgrIdPw.equals("null")) {
+							dataSource
+									.insertIntoEmployeeManagerTableWithNoManager(empId);
+						} else {
+							dataSource.insertIntoEmployeeManagerTable(empId,
+									mgrIdPw);
+						}
+						updateManagerIdInAppraisal(empId, mgrIdPw);
+						log.info("UPDATION OF MANAGERID SUCCESSFULL FOR THIS EMPLOYEE "
+								+ empId);
+					}
+				} catch (EmptyResultDataAccessException erda) {
+					try{
+					log.info("INSERTION STARTED FOR THIS EMPLOYEE " + empId);
+					if (mgrIdPw.equals("null")) {
+						dataSource
+								.insertIntoEmployeeManagerTableWithNoManager(empId);
+					} else {
+						dataSource.insertIntoEmployeeManagerTable(empId,
+								mgrIdPw);
+					}
+					log.info("INSERTION OF MANAGERID SUCCESSFULL FOR THIS EMPLOYEE " + empId);
+					}
+					catch(Exception e){
+						log.error("Error occured when handling EmptyResultDataAccessException occurred in method insertIntoAppraisalDatabase and empid: "+ empId+" mgrid: "+ mgrIdPw +"exception message:"+e.getMessage());
+					}
+				}
+				catch(Exception e){
+					log.error("Error occured in method insertIntoAppraisalDatabase and records are : empid: "+ empId+" mgrid: "+ mgrIdPw +"exception message:"+e.getMessage());
+				}
+			}
+			log.info("All DONE");
+		}
+	}
+
+	@Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
+	public void setDesignationDetailsFromAppraisal(
+			String temporaryLocationOfFile) throws Exception {
+		log.info("Setting Designation Master Table Details");
+		try (Reader reader = Files.newBufferedReader(Paths
+				.get(temporaryLocationOfFile));
+				CSVReader csvReader = new CSVReader(reader,';','\u0000','"');) {
+			List<String[]> records = csvReader.readAll();
+			for (String[] record : records) {
+				try {
+					dataSource.insertIntoDesignationMasterTable(Integer.valueOf(record[0]), record[1]);
+				} catch (Exception e) {
+					log.error("Error occured in method setDesignationDetailsFromAppraisal and records are : empid: "+ Integer.valueOf(record[0])+" designation "+ record[1]+"exception message:"+e.getMessage());
+				}
+			}
+			log.info("All DESIGNATIONS SETTING DONE");
+		}
+	}
+
+	@Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
+	public void insertNewEmployeesDetails(String[] employeeDetails)
+			throws Exception {
+		if (dataSource.CheckForPresenceOfEmployeeDetails(employeeDetails[0]) != 1) {
+			dataSource.insertNewEmployeeDetails(employeeDetails[0],
+					employeeDetails[1], employeeDetails[3], employeeDetails[4],
+					employeeDetails[5], employeeDetails[6], employeeDetails[7]);
+			log.info("Setting New Employee Detail Done For: "+employeeDetails[0]);
+		}
+	}
+	
+	@Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
+	public void setDesignationForEmployee(String[] record) throws Exception {
+		Map<String, String> map = time.getCurrentCycleDetails();
+		try {
+			String designation = dataSource.getEmployeeDesignationDetails(
+					record[0],map.get("cyclePeriodFrom"),map.get("cyclePeriodTo"));
+			if (!(record[8].equals(designation))) {
+				dataSource.updateHistoryOfEmployeeDesignation(record[0],
+						map.get("cyclePeriodFrom"),map.get("cyclePeriodTo"));
+				dataSource.insertEmployeeNewDesignation(record[0],
+						map.get("cyclePeriodFrom"),map.get("cyclePeriodTo"),
+						record[8]);
+				log.info("Setting Employee Designation Done For: "+record[0]);
+			}
+		} catch (EmptyResultDataAccessException e) {
+			dataSource.insertEmployeeNewDesignation(record[0],
+					map.get("cyclePeriodFrom"),map.get("cyclePeriodTo"), record[8]);
+		}
+		log.info("New employee designation details inserted");
+	}
+	@Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
+	public void updateManagerIdInAppraisal(String empId, String mgrIdPw)
+			throws Exception {
+		log.info("Setting Employee's manager in Appraisal Table");
+		//Map<String, String> map = time.getCurrentCycleDetails();
+		try {
+			/*List<Map<String, Object>> appraisalCycleDetails = dataSource
+					.fetchingCyclePeriodFromOfAppraisalCycles(
+							map.get("appraisalCycle"),
+							map.get("cyclePeriodFrom"),
+							map.get("cyclePeriodTo"), empId);
+			boolean flag = false;
+			int i;
+			for (i = 0; i < appraisalCycleDetails.size(); i++) {
+				String fetchedCyclePeriodFrom = (String) appraisalCycleDetails
+						.get(i).get("cycle_period_from");
+				log.info("Fetching cycle_period From : "
+						+ fetchedCyclePeriodFrom);
+				int fromMonth = Integer.valueOf(map.get("cyclePeriodFrom")
+						.substring(3, 5));
+				int toMonth = Integer.valueOf(map.get("cyclePeriodTo")
+						.substring(3, 5));
+				int fetchedFromMonth = Integer.valueOf(fetchedCyclePeriodFrom
+						.substring(3, 5));
+				if (fromMonth >= toMonth) {
+					log.info(fromMonth + "" + toMonth);
+					if ((fetchedFromMonth >= fromMonth && fetchedFromMonth >= toMonth)
+							|| (fetchedFromMonth <= fromMonth && fetchedFromMonth <= toMonth)) {
+						log.info("" + fetchedFromMonth);
+						flag = true;
+						break;
+					}
+				} else if (fetchedFromMonth >= fromMonth
+						&& fetchedFromMonth <= toMonth) {
+					flag = true;
+					break;
+				}
+			}
+			if (flag == true) {
+				dataSource.updateManagerIdInAppraisal(
+						(int) appraisalCycleDetails.get(i).get("id"), mgrIdPw);
+			}
+			
+			*/
+			
+			Map<Integer,String>statusIdMap=dataSource.getStatusIdMap(empId);
+			statusIdMap.forEach((id,status)->{
+				try {
+					String currentManagerStatus=null;
+					try {
+						  currentManagerStatus=dataSource.getStatusForCurrentManager(empId);	
+					}catch (Exception e) {
+						log.error("Exception Occured while updating manager id "+mgrIdPw+" for employee id "+empId+" with exception message: "+e.getMessage());
+					}
+					if(currentManagerStatus==null ||AppraisalCycleStatusEnum.Open.getValue().equals(currentManagerStatus) || AppraisalCycleStatusEnum.ObjectiveSettingInProgress.getValue().equals(currentManagerStatus) || AppraisalCycleStatusEnum.ObjectiveSettingRequestApprovalPending.getValue().equals(currentManagerStatus)|| AppraisalCycleStatusEnum.ObjectiveSettingRequestApprovalInProgress.getValue().equals(currentManagerStatus) || AppraisalCycleStatusEnum.Objectives_Approved.getValue().equals(currentManagerStatus)|| AppraisalCycleStatusEnum.Objectives_Rejected.getValue().equals(currentManagerStatus) || AppraisalCycleStatusEnum.InProgress.getValue().equals(currentManagerStatus) || AppraisalCycleStatusEnum.ObjectiveSettingRequestApprovalPending.getValue().equals(currentManagerStatus)) {
+						dataSource.updateManagerIdInAppraisal(id, mgrIdPw);	
+					}
+
+					} catch (Exception e) {
+						log.error("Exception Occured while updating manager id "+mgrIdPw+" for employee id "+empId+" with exception message: "+e.getMessage());
+					}
+			});
+			
+			
+		} catch (EmptyResultDataAccessException e) {
+			log.error("Exception Occured while fetching status id map for emp: "+empId+" with exception message: "+e.getMessage());
+		}
+		log.info("At the end of updateManagerIdInAppraisal method");
+	}
+}

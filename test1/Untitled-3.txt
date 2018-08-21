@@ -1,0 +1,59 @@
+package com.tricon.DATASETTING.serviceImpl;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
+import com.github.drapostolos.rdp4j.DirectoryListener;
+import com.github.drapostolos.rdp4j.FileAddedEvent;
+import com.github.drapostolos.rdp4j.FileModifiedEvent;
+import com.github.drapostolos.rdp4j.FileRemovedEvent;
+
+@Component
+public class FtpLocationEventListener implements DirectoryListener {
+	
+	private static final Logger log = LoggerFactory
+			.getLogger(FtpLocationEventListener.class);
+	
+	@Autowired
+	DataSettingManagementService dataSettingManagementService ;
+	
+	@Autowired
+	FtpDirectory ftpDirectory;
+	
+    @Override
+    public void fileAdded(FileAddedEvent event) {
+        try {
+        	/*Set<FileElement> allFilesFromFtp = ftpDirectory.listFiles();*/       
+        	dataSettingManagementService.setEmployeeDetailsIntoAppraisal();
+        	log.info("file added");
+		} catch (Exception e) {
+			log.error("Error occured while setting employee details in method fileAdded"+e.getMessage());
+			e.printStackTrace();
+		}
+    }
+
+	@Override
+	public void fileModified(FileModifiedEvent arg0)
+			throws InterruptedException {
+		  try {
+	        	/*Set<FileElement> allFilesFromFtp = ftpDirectory.listFiles();*/       
+	        	System.out.println("file Added here");
+	        	System.out.println(dataSettingManagementService+"@@@@@@@@@@@@@@@@@@@@@@@@@");
+	        	dataSettingManagementService.setEmployeeDetailsIntoAppraisal();
+	        	log.info("file added");
+			} catch (Exception e) {
+				log.error("Error occured while setting employee details in method fileModified"+e.getMessage());
+				e.printStackTrace();
+			}
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void fileRemoved(FileRemovedEvent arg0) throws InterruptedException {
+		// TODO Auto-generated method stub
+		
+	}
+}

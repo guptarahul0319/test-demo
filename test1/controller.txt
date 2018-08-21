@@ -1,0 +1,81 @@
+package com.tricon.DATASETTING.controller;
+
+import java.sql.Timestamp;
+import java.util.concurrent.TimeUnit;
+
+import javax.annotation.PostConstruct;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.github.drapostolos.rdp4j.DirectoryPoller;
+import com.github.drapostolos.rdp4j.spi.PolledDirectory;
+import com.tricon.DATASETTING.serviceImpl.DataSettingManagementService;
+import com.tricon.DATASETTING.serviceImpl.FtpDirectory;
+import com.tricon.DATASETTING.serviceImpl.FtpLocationEventListener;
+
+@Component
+public class FtpDirectoryPoller {
+	
+	private static final Logger log = LoggerFactory.getLogger(FtpDirectoryPoller.class);
+	
+	@Value("${FtpServer}")
+    private String host;
+	
+	@Value("${FtpServerPort}")
+    private int port;
+	
+	@Value("${FtpUsername}")
+    private String username;
+	
+	@Value("${FtpPassword}")
+	private String password;
+	
+	@Value("${FtpWorkingDirectory}")
+	private String workingDirectory;
+	
+	@Autowired
+	DataSettingManagementService dataSettingManagementService;
+	
+	@Autowired
+	FtpLocationEventListener ftpLocationEventListener;
+	
+	@Autowired
+	FtpDirectory ftpDirectory;
+
+	
+	/*@PostConstruct
+	public void filePolling()throws Exception{
+        PolledDirectory polledDirectory = ftpDirectory.getFtpDirectory(host, workingDirectory, username, password);
+        
+        DirectoryPoller dp = DirectoryPoller.newBuilder()
+            .addPolledDirectory(polledDirectory)
+            .addListener(ftpLocationEventListener)
+            .enableFileAddedEventsForInitialContent()
+            .setPollingInterval(1, TimeUnit.MINUTES)
+            .start();
+            
+    }*/
+	
+    @Scheduled(cron="${CronExpression}")
+    public void getCsvFilesFromFtpLocation() {
+        log.info("Schedular started at : "+new Timestamp(System.currentTimeMillis()));
+        try{
+        	dataSettingManagementService.setEmployeeDetailsIntoAppraisal();
+        }
+        catch(Exception e){
+        	log.info("exception Occurred in the method getCsvFilesFromFtpLocation"+e.getMessage());
+        }
+        
+        
+        
+    }
+	
+	
+	
+}
+	

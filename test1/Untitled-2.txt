@@ -1,0 +1,98 @@
+package com.tricon.DATASETTING.serviceImpl;
+
+import java.io.IOException;
+import java.util.LinkedHashSet;
+import java.util.Set;
+
+import org.apache.commons.net.ftp.FTPClient;
+import org.apache.commons.net.ftp.FTPFile;
+import org.apache.commons.net.ftp.FTPReply;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
+import com.github.drapostolos.rdp4j.spi.FileElement;
+import com.github.drapostolos.rdp4j.spi.PolledDirectory;
+
+
+@Component
+public class FtpDirectory implements PolledDirectory{
+    private String host;
+    private String workingDirectory;
+    private String username;
+    private String password;
+    
+    FtpFile ftpFile = new FtpFile();  
+    
+    public static FTPClient ftp = null;
+
+	public String getHost() {
+		return host;
+	}
+
+	public void setHost(String host) {
+		this.host = host;
+	}
+
+	public String getWorkingDirectory() {
+		return workingDirectory;
+	}
+
+	public void setWorkingDirectory(String workingDirectory) {
+		this.workingDirectory = workingDirectory;
+	}
+
+	public String getUsername() {
+		return username;
+	}
+
+	public void setUsername(String username) {
+		this.username = username;
+	}
+
+	public String getPassword() {
+		return password;
+	}
+
+	public void setPassword(String password) {
+		this.password = password;
+	}
+
+	public FtpDirectory getFtpDirectory(String host, String workingDirectory, String username, String password) {
+    	FtpDirectory ftpDirectory = new FtpDirectory();
+
+    	ftpDirectory.setHost(host);
+    	ftpDirectory.setPassword(password);
+    	ftpDirectory.setUsername(username);
+    	ftpDirectory.setWorkingDirectory(workingDirectory);
+        
+        return ftpDirectory;
+    }
+
+    public Set<FileElement> listFiles() throws IOException {
+        try{
+            ftp = new FTPClient();
+            ftp.connect(this.host);
+            if (!FTPReply.isPositiveCompletion(ftp.getReplyCode())) {
+                ftp.disconnect();
+                throw new IOException("Exception when connecting to FTP Server: " + ftp);
+            }
+            ftp.login(this.username,this.password);
+            
+            Set<FileElement> result = new LinkedHashSet<FileElement>();
+            for(FTPFile file : ftp.listFiles(workingDirectory)){
+                result.add(ftpFile.getFtpFile(file));
+            }
+            return result;
+        } catch (Exception e){
+            throw new IOException(e);
+        } finally {
+            try {
+                if(ftp.isConnected()) {
+                    ftp.disconnect();
+                }
+            } catch(Throwable ioe) {
+                // do nothing
+            }
+        }
+    }
+}

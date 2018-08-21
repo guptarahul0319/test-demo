@@ -1,0 +1,45 @@
+package com.tricon.DATASETTING.serviceImpl;
+
+
+import java.io.IOException;
+
+import org.apache.commons.net.ftp.FTPFile;
+import org.springframework.stereotype.Component;
+
+import com.github.drapostolos.rdp4j.spi.FileElement;
+
+@Component
+public class FtpFile implements FileElement{
+    private FTPFile file;
+    private String name;
+    private boolean isDirectory;
+    
+    public FtpFile  getFtpFile(FTPFile file) {
+    	
+        this.file = file;
+        this.name = file.getName();
+        this.isDirectory = file.isDirectory();
+        
+        return this;
+    }
+    
+    @Override
+    public long lastModified() throws IOException {
+        return file.getTimestamp().getTimeInMillis();
+    }
+    
+    @Override
+    public boolean isDirectory() {
+        return isDirectory;
+    }
+    
+    @Override
+    public String getName() {
+        return name;
+    }
+    
+    @Override
+    public String toString() {
+        return file.toString();
+    }
+}
