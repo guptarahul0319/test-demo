@@ -1,0 +1,96 @@
+<app-header [isUserLoggedIn]="true"></app-header>
+<div class="container-fluid">
+    <div class="row">
+      <div class="col-sm-2 sidenav">
+          <div class="box">
+              <div class="row">
+                  <div class="col-sm-2">
+                      <i class="material-icons icon">group</i>
+                </div>
+                  <div class="col-sm-10">
+                        <a href="/adminConfig">Manage Groups</a>
+                  </div>
+                </div>   
+          </div>
+      </div>
+      <div class="col-sm-10 createGroupBox">
+         
+          <div class="container-fluid">
+              <form [formGroup]="createGroupForm" (ngSubmit)="onSave()">   
+                <div class="row ">
+                    <div class="col-sm-12 signin">Create Group</div>
+                </div>
+                <div class="row fields">
+                    <div class="col-sm-4">
+                        <label for="groupname"><b>Group Name</b></label>
+                    </div>
+                    <div class="col-sm-8 form-group">
+                      <input type="text" formControlName="groupname" placeholder="Enter Group Name" class="form-control" [ngClass]="{ 'is-invalid': submitted && createGroupFormControl.groupname.errors }" />
+                        <div *ngIf="submitted && createGroupFormControl.groupname.errors" class="invalid-feedback">
+                            <div class="red-alert" *ngIf="createGroupFormControl.groupname.errors.required">Group Name is required</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row fields">
+                    <div class="col-sm-4">
+                        <label for="groupadmin"><b>Group Admin</b></label>
+                    </div>
+                    <div class="col-sm-8 form-group">
+                      <select formControlName="groupadmin"  class="form-control" [ngClass]="{ 'is-invalid': submitted && createGroupFormControl.groupadmin.errors }" >
+                        <div *ngIf="submitted && createGroupFormControl.groupadmin.errors" class="invalid-feedback">
+                            <div class="red-alert" *ngIf="createGroupFormControl.groupadmin.errors.required">Group Admin is required</div>
+                         </div>
+                        <option value="groupadmin">Rahul Gupta</option>
+                        <option value="groupadmin">Sweta Gupta</option>
+                      </select>
+                    </div>
+                </div>
+                
+                <div class="row fields">
+                    <div class="col-sm-4">
+                        <label for="description"><b>Description</b></label>
+                    </div>
+                    <div class="col-sm-8 form-group">
+                      <input type="text" formControlName="description" placeholder="Enter Description" class="form-control" [ngClass]="{ 'is-invalid': submitted && createGroupFormControl.description.errors }" />
+                        <div *ngIf="submitted && createGroupFormControl.description.errors" class="invalid-feedback">
+                            <div class="red-alert" *ngIf="createGroupFormControl.description.errors.required">Description is required</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row fields">
+                    <div class="col-sm-4">
+                        <label for="addMembers"><b>Add Members</b></label>
+                    </div>
+                    <div class="col-sm-8 form-group">
+                      <select formControlName="addmembers" class="form-control" [ngClass]="{ 'is-invalid': submitted && createGroupFormControl.addmembers.errors }" >
+                        <div *ngIf="submitted && createGroupFormControl.addmembers.errors" class="invalid-feedback">
+                            <div class="red-alert" *ngIf="createGroupFormControl.addmembers.errors.required">Members is required</div>
+
+                        </div>
+                        <option value="addMembers">Rishi Tripathi</option>
+                        <option value="addMembers">Daniel Robin</option>
+                        <option value="addMembers">Ashmi Joseph</option>
+                      </select>
+                    </div>
+                </div>
+                
+                
+                
+                
+                <div class="row fields form-group">
+                  <div class="col-sm-4"> </div>
+                  <div class="col-sm-8">
+                      
+                          <button class=" button" (click)="createGroup()">Create</button>
+                   </div>
+                  
+                </div>
+              </form>  
+            </div>
+            
+
+      </div>
+    </div>
+  </div>
