@@ -1,0 +1,10 @@
+<div *ngIf="group">
+    <h2>{{group.name | uppercase}} Details</h2>
+    <div><span>id: </span>{{group.name}}</div>
+    <div>
+      <label>name:
+        <input [(ngModel)]="group.name" placeholder="Name"/>
+      </label>
+    </div>
+    <button (click)="goBack()">go back</button>
+  </div>
