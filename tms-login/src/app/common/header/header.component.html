@@ -1,0 +1,28 @@
+
+<div class="container-fluid header">
+    <div class="row">
+            <div class="col-sm-4 logo">
+                    <img src="assets/img/logo.png">
+            </div>
+             <div class="col-sm-6 tms">
+                     Ticket Management System
+            </div>
+    
+                    
+                
+            <div class="col-sm-2 " *ngIf="isUserLoggedIn"> 
+                <div class="user">
+                        Hello,User Info 
+                </div>
+                <div class="configure">
+                         <a (click)="adminConfiguration()" >ADMIN CONFIGURE</a>
+                </div>
+                        
+                <div class="logout">
+                        <a href="" (click)="logOut()">LOGOUT</a>    
+                </div>
+
+             </div>
+   </div>
+</div>  
+

@@ -1,0 +1,8 @@
+table {
+    counter-reset: section;
+}
+
+h6::before {
+    counter-increment: section;
+    content: counter(section);
+}
