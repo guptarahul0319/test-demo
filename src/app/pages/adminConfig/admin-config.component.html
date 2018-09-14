@@ -1,0 +1,41 @@
+<app-sidenav></app-sidenav>
+
+<div class="container">
+    <button (click)="addGroup()" class="btn-primary pull-right button">+Create Group</button>  
+    <h2>Groups</h2>
+  
+    <table class="table table-striped">
+        <thead>
+            <tr>
+              <th>Sr No.</th>
+              <th>Group Name</th>
+              <th>Group Admin</th>
+              <th>Description</th>
+              <th>Status</th>
+              <th>Edit</th>
+              <th>Delete</th>
+            </tr>
+        </thead>
+  
+        <tbody>
+            <tr *ngFor="let group of groups">
+              <td><h6></h6></td>
+              <td>{{ group.groupName }}</td>
+              <td>{{ group ['groupadmin']['empName'] }}</td>
+              <td>{{ group.description }}</td>
+              <td>{{ group.isArchived }}</td> 
+              <td><a routerLink="/group/edit/{{group.groupId}}"><a><i class="material-icons">border_color</i></a></a></td>
+              <td><a (click) = "deleteGroup(group)" ><a><i class="material-icons">delete</i></a></a></td>
+            </tr>
+        </tbody>
+    </table>
+    
+    <notifier-container></notifier-container>
+
+    <nav aria-label="Page navigation">
+        <ul class="pagination">
+            <li *ngFor ="let page of pageList" class="page-item"><a class="page-link" (click)="pageNo(page)">{{page}}</a></li>
+        </ul>
+    </nav>
+
+</div>

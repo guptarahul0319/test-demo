@@ -1,0 +1,44 @@
+<app-sidenav></app-sidenav>
+
+<div class="container">
+    <div >
+       <h1>Group Creation</h1>
+         <form [formGroup]="userForm" novalidate>
+           <div class="form-group">
+             <label for="groupName">Group Name: </label> 
+             <input type="text" class="form-control" id="groupName"  name="groupName" [(ngModel)]="gName" [ngModelOptions]="{standalone: true}" #groupName="ngModel"  placeholder="Group Name" required> 
+             <div [hidden]="groupName.valid || groupName.pristine" class="alert alert-danger">
+                 Group Name is Required
+            </div>
+        </div>
+
+           <div class="form-group">
+             <label for="groupDescription">Group Description: </label>
+             <textarea class="form-control" id="groupDescription" placeholder="Group Description" [(ngModel)]="gDescription" #groupDescription="ngModel" [ngModelOptions]="{standalone: true}" required></textarea>
+             <div [hidden]="groupDescription.valid || groupDescription.pristine" class="alert alert-danger">
+                    Group Description is Required
+               </div>
+           </div>
+
+            <div class="form-group">
+                <label for="groupAdmin" >Group Admin:</label>
+                <angular2-multiselect [data]="adminItemList" [(ngModel)]="adminSelectedItems" [settings]="adminSettings" formControlName="adminList" class="test form-control" required></angular2-multiselect>
+            </div>
+
+            <div class="form-group">
+                <label for="groupMembers">Group Members:</label>
+                <angular2-multiselect [data]="employeeItemList" [(ngModel)]="employeeSelectedItems" [settings]="employeeSettings" formControlName="employeeList" class="test form-control" required></angular2-multiselect>
+            </div>
+
+            <div class="form-group">
+                <label for="groupMembers">Group Status:</label>
+                <angular2-multiselect [data]="statusItemList" [(ngModel)]="statusSelectedItems" [settings]="statusSettings" formControlName="statusList" class="test form-control" aria-required></angular2-multiselect>
+            </div>
+
+            <div>
+                <button type="button" class="btn btn-success button" (click)="onSubmit()">Submit</button>            
+            </div>
+            <notifier-container></notifier-container>
+         </form>
+     </div>
+  </div>
